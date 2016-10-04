@@ -4,9 +4,12 @@
 #include <errno.h>
 #include <limits.h>
 
+
+//#include <smbus.h>
+
 #define DevAddr  0x53  //device address
 
-#define TimeStep 20 //sample interval in ms
+#define TimeStep 10 //sample interval in ms
 
 struct acc_dat{
 	int x;
@@ -49,6 +52,7 @@ void adxl345_init(int fd)
 	wiringPiI2CWriteReg8(fd, 0x2f, 0x00); // Interrupts (all disabled)
 	
 	wiringPiI2CWriteReg8(fd, 0x38, 0x9f); // FIFO mode (stream)
+	//wiringPiI2CWriteReg8(fd, 0x38, 0x1f); // FIFO mode (stream)
 }
 
 struct acc_dat adxl345_read_xyz(int fd)
@@ -56,15 +60,48 @@ struct acc_dat adxl345_read_xyz(int fd)
 	unsigned char x0, y0, z0, x1, y1, z1;
 	struct acc_dat acc_xyz;
 	
-	x0 = 0xff - wiringPiI2CReadReg8(fd, 0x32);
-	x1 = 0xff - wiringPiI2CReadReg8(fd, 0x33);
-	y0 = 0xff - wiringPiI2CReadReg8(fd, 0x34);
-	y1 = 0xff - wiringPiI2CReadReg8(fd, 0x35);
-	z0 = 0xff - wiringPiI2CReadReg8(fd, 0x36);
-	z1 = 0xff - wiringPiI2CReadReg8(fd, 0x37);
-	
 	while((0x1f & wiringPiI2CReadReg8(fd, 0x39)) == 0){;}
 
+
+	/*x1 = 0xff - wiringPiI2CReadReg8(fd, 0x33);
+	x0 = 0xff - wiringPiI2CReadReg8(fd, 0x32);
+		
+	y1 = 0xff - wiringPiI2CReadReg8(fd, 0x35);
+	y0 = 0xff - wiringPiI2CReadReg8(fd, 0x34);
+	
+	z1 = 0xff - wiringPiI2CReadReg8(fd, 0x37);
+	z0 = 0xff - wiringPiI2CReadReg8(fd, 0x36);
+	*/
+	
+	/*x1 = wiringPiI2CReadReg8(fd, 0x33);
+	x0 = wiringPiI2CReadReg8(fd, 0x32);
+		
+	y1 = wiringPiI2CReadReg8(fd, 0x35);
+	y0 = wiringPiI2CReadReg8(fd, 0x34);
+	
+	z1 = wiringPiI2CReadReg8(fd, 0x37);
+	z0 = wiringPiI2CReadReg8(fd, 0x36);
+	*/
+	unsigned char tmp[8];
+	//if (
+	wiringPiI2CReadReg48(fd, 0x32, tmp),
+	// == -1) {printf("ERROR LUCA!\n");} 
+	
+	//unsigned char data [8];
+	//i2c_smbus_access(fd, 1, 0x32, 6, &data);
+	/*int i;
+	for (i=0;i<8;i++){
+		printf("%02x ",tmp[i]);
+    }
+    printf("\n");
+    */
+    x0 = tmp[1];
+    x1 = tmp[2];
+    y0 = tmp[3];
+    y1 = tmp[4];
+    z0 = tmp[5];
+    z1 = tmp[6];
+	
 	acc_xyz.x = (int)(short int)((unsigned int)(x1 << 8) + (unsigned int)x0);
 	acc_xyz.y = (int)(short int)((unsigned int)(y1 << 8) + (unsigned int)y0);
 	acc_xyz.z = (int)(short int)((unsigned int)(z1 << 8) + (unsigned int)z0);
@@ -82,10 +119,36 @@ int main(void)
 
 	fd = wiringPiI2CSetup(DevAddr);
 	
+	/*char *filename;
+	unsigned char buf[4];
+
+	filename = "/dev/i2c-1";
+	// Open port for reading and writing
+    if ((fd1 = open(filename, O_RDWR)) < 0) {               
+        printf("Failed to open i2c port\n");
+        //exit(1);
+    }
+// Set the port options and set the address of the device we wish to speak to
+    if (ioctl(fd1, DevAddr, 0x32) < 0) {               
+        printf("Unable to get bus access to talk to slave\n");
+    //    exit(1);
+	}
+
+//do your stuff 
+
+    if (read(fd, buf, 4) != 4) {   // Read back data into buf[]
+        printf("Unable to read from slave \n");
+        //exit(1);
+    }
+	
+	close(fd);
+	
+	
+	
 	if(-1 == fd){
 		perror("I2C device setup error");	
 	}
-
+    */
 	FILE *f = fopen("./data.dat", "w");
 	if (f == NULL)
 	{
@@ -96,12 +159,13 @@ int main(void)
 
 	adxl345_init(fd);
 	int t;
-	for(t = 0; t <= 5000/TimeStep; t++){ // t counts the time step
-		//acc_xyz = adxl345_read_xyz(fd);
+	for(t = 0; t <= 10000/TimeStep; t++){ // t counts the time step
+		acc_xyz = adxl345_read_xyz(fd);
+		//printf("t:%.3f \tx: 0x%08x \ty: 0x%08x \tz: 0x%08x\n", (((float)t)*TimeStep)/1000, acc_xyz.x, acc_xyz.y, acc_xyz.z);
 		printf("t:%.3f \tx: %.8f \ty: %.8f \tz: %.8f\n", (((float)t)*TimeStep)/1000, acc_xyz.x_norm, acc_xyz.y_norm, acc_xyz.z_norm);
 		fprintf(f, "%.3f\t%.8f\t%.8f\t%.8f\n", (((float)t)*TimeStep)/1000, acc_xyz.x_norm, acc_xyz.y_norm, acc_xyz.z_norm);
 
-		delay(TimeStep);
+		delay(1);
 	}
 	
 	fclose(f);
