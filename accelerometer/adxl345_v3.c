@@ -2,20 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <limits.h>
+//#include <limits.h>
 
 #define DevAddr  0x53  //device address
-
-#define TimeStep 10 //sample interval in ms
-
-struct acc_dat{
-	int x;
-	int y;
-	int z;
-	float x_norm;
-	float y_norm;
-	float z_norm;
-};
+#define TimeStep 10 // sample interval in ms
+#define MeasurePeriod 10 // in seconds
+#define SamplesNumber (1000*MeasurePeriod/TimeStep)
 
 void adxl345_init(int fd)
 {
@@ -53,69 +45,58 @@ void adxl345_init(int fd)
 	//wiringPiI2CWriteReg8(fd, 0x38, 0x1f); // FIFO mode (stream)
 }
 
-struct acc_dat adxl345_read_xyz(int fd)
+void adxl345_read_xyz(int fd, unsigned int data_length, float acc_x[], float acc_y[], float acc_z[])
 {
-	unsigned char x0, y0, z0, x1, y1, z1;
-	struct acc_dat acc_xyz;
-	
-	while((0x1f & wiringPiI2CReadReg8(fd, 0x39)) == 0){;}
-	
-	unsigned char tmp[8];
-	if (wiringPiI2CReadReg48(fd, 0x32, tmp) == -1) {printf("ERROR LUCA!\n");} 
-	
-	/*
-	for (i=0;i<8;i++){
-		printf("%02x ",tmp[i]);
-    }
-    printf("\n");
-    */
-
-    x0 = tmp[1];
-    x1 = tmp[2];
-    y0 = tmp[3];
-    y1 = tmp[4];
-    z0 = tmp[5];
-    z1 = tmp[6];
-	
-	acc_xyz.x = (int)(short int)((unsigned int)(x1 << 8) + (unsigned int)x0);
-	acc_xyz.y = (int)(short int)((unsigned int)(y1 << 8) + (unsigned int)y0);
-	acc_xyz.z = (int)(short int)((unsigned int)(z1 << 8) + (unsigned int)z0);
-	acc_xyz.x_norm = 16 * (float)acc_xyz.x / (4096);
-	acc_xyz.y_norm = 16 * (float)acc_xyz.y / (4096);
-	acc_xyz.z_norm = 16 * (float)acc_xyz.z / (4096);
-
-	return acc_xyz;
+	int i;
+	unsigned char sample[6];
+	for (i = 0; i < data_length; i++)
+	{
+		while((0x1f & wiringPiI2CReadReg8(fd, 0x39)) == 0){;} // waiting for a sample			
+		printf("\r%d s", (i*TimeStep)/1000);
+		fflush(stdout); 
+		wiringPiI2CReadBurst(fd, 0x32, 6, sample) ;
+		acc_x[i] = 16 * (float)((short int)((unsigned int)(sample[1] << 8) + (unsigned int)sample[0])) / (4096); // acc.x
+		acc_y[i] = 16 * (float)((short int)((unsigned int)(sample[3] << 8) + (unsigned int)sample[2])) / (4096); // acc.y
+		acc_z[i] = 16 * (float)((short int)((unsigned int)(sample[5] << 8) + (unsigned int)sample[4])) / (4096); // acc.z
+		delay(1);
+	}
+	printf(" -> ");
+	return;
 }
 
 int main(void)
 {
 	int fd;
-	struct acc_dat acc_xyz;
-
-	fd = wiringPiI2CSetup(DevAddr);
+	float acc_x[SamplesNumber];
+	float acc_y[SamplesNumber];
+	float acc_z[SamplesNumber];
 	
+	printf("Initializing I2C interface.\n");
+	fd = wiringPiI2CSetup(DevAddr);
+
+	printf("Initializing acceleromenter device %d.\n", fd);
+	adxl345_init(fd);
+	delay(2500);
+	
+	printf("Measurng %d seconds...\n", MeasurePeriod);
+	adxl345_read_xyz(fd, SamplesNumber, acc_x, acc_y, acc_z);
+	printf("Done!\n");
+
+	printf("Preparing data file 'data.dat'.\n");
 	FILE *f = fopen("./data.dat", "w");
 	if (f == NULL)
 	{
 		printf("Error opening file!\n");
 		return 1;
 	}
-
 	fprintf(f, "#t:   \tx:        \ty:        \tz:        \n");
-
-	adxl345_init(fd);
 	int t;
-	for(t = 0; t <= 10000/TimeStep; t++){ // t counts the time step
-		acc_xyz = adxl345_read_xyz(fd);
-		//printf("t:%.3f \tx: 0x%08x \ty: 0x%08x \tz: 0x%08x\n", (((float)t)*TimeStep)/1000, acc_xyz.x, acc_xyz.y, acc_xyz.z);
-		printf("t:%.3f \tx: %.8f \ty: %.8f \tz: %.8f\n", (((float)t)*TimeStep)/1000, acc_xyz.x_norm, acc_xyz.y_norm, acc_xyz.z_norm);
-		fprintf(f, "%.3f\t%.8f\t%.8f\t%.8f\n", (((float)t)*TimeStep)/1000, acc_xyz.x_norm, acc_xyz.y_norm, acc_xyz.z_norm);
-
-		delay(1);
-	}
-	
+	for(t = 0; t < SamplesNumber; t++){// t counts the time step
+		//printf("t:%.3f \tx: %.8f \ty: %.8f \tz: %.8f\n", (((float)t)*TimeStep)/1000, acc_xyz.x_norm, acc_xyz.y_norm, acc_xyz.z_norm);
+		fprintf(f, "%.3f\t%.8f\t%.8f\t%.8f\n", (((float)t)*TimeStep)/1000, acc_x[t], acc_y[t], acc_z[t]);
+	}	
 	fclose(f);
-	
+
+	printf("Program terminated. Goodbye!\n");
 	return 0;
 }
-
