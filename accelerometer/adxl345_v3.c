@@ -64,6 +64,14 @@ void adxl345_read_xyz(int fd, unsigned int data_length, float acc_x[], float acc
 	return;
 }
 
+void array_mult(float k, unsigned int data_length, float x[], float y[]){
+	int n;
+	for(n=0; n<data_length; n++){
+		y[n]= k * x[n];
+	}
+	return;
+	}
+
 //Preliminary fir filtering function (coeff length can be only odd, the order is this value + 1) 
 void fir_filter(unsigned int coeff_length, float coeff[], unsigned int data_length, float x[], float y[]){
 	int n, i;
@@ -146,63 +154,8 @@ int main(void)
 		0.0204081632653,
 		0.0204081632653,
 		0.0204081632653,
-		0.0204081632653
-		}; // length 49
-	
+		0.0204081632653}; // length 49
 		
-/*float coeff[49] = {
-  0.03356846653006693,
-  0.061667157226935054,
-  0.027739401687124438,
-  -0.03215511129232897,
-  -0.02570816419570773,
-  0.01693253803387793,
-  -0.002260998224234031,
-  -0.04298400924406043,
-  -0.01460778558134233,
-  0.015404727564028204,
-  -0.03151864447256965,
-  -0.05594032129623139,
-  -0.0014502651639476762,
-  0.0011517462554266249,
-  -0.06858904356183856,
-  -0.053476150267923586,
-  0.015334457527833488,
-  -0.03537997186538048,
-  -0.10422404233548749,
-  -0.016354841464085224,
-  0.030024736363530674,
-  -0.12710105341124392,
-  -0.12622877091794107,
-  0.2635912044562735,
-  0.5358969163865988,
-  0.2635912044562735,
-  -0.12622877091794107,
-  -0.12710105341124392,
-  0.030024736363530674,
-  -0.016354841464085227,
-  -0.10422404233548749,
-  -0.03537997186538048,
-  0.015334457527833488,
-  -0.053476150267923586,
-  -0.06858904356183859,
-  0.0011517462554266429,
-  -0.0014502651639476762,
-  -0.05594032129623139,
-  -0.03151864447256965,
-  0.015404727564028204,
-  -0.014607785581342334,
-  -0.042984009244060435,
-  -0.002260998224234031,
-  0.01693253803387793,
-  -0.025708164195707733,
-  -0.03215511129232897,
-  0.027739401687124444,
-  0.061667157226935054,
-  0.03356846653006691
-};
-*/
-	
 	float filter_acc_x[SamplesNumber];
 	float filter_acc_y[SamplesNumber];
 	float filter_acc_z[SamplesNumber];
@@ -229,14 +182,19 @@ int main(void)
 	for(t = 0; t < SamplesNumber; t++){// t counts the time step
 		//printf("t:%.3f \tx: %.8f \ty: %.8f \tz: %.8f\n", (((float)t)*TimeStep)/1000, acc_xyz.x_norm, acc_xyz.y_norm, acc_xyz.z_norm);
 		fprintf(f, "%.3f\t%.8f\t%.8f\t%.8f\n", (((float)t)*TimeStep)/1000, acc_x[t], acc_y[t], acc_z[t]);
+		//printf("%.8f, ", acc_x[t]);
 	}	
 	fclose(f);
 	
 	printf("Filtering (FIR).\n");
-	fir_filter(49, coeff, SamplesNumber, acc_x, filter_acc_x);
-	fir_filter(49, coeff, SamplesNumber, acc_y, filter_acc_y);
-	fir_filter(49, coeff, SamplesNumber, acc_z, filter_acc_z);
+	fir_filter(55, coeff, SamplesNumber, acc_x, filter_acc_x);
+	fir_filter(55, coeff, SamplesNumber, acc_y, filter_acc_y);
+	fir_filter(55, coeff, SamplesNumber, acc_z, filter_acc_z);
 	
+	//array_mult(49, SamplesNumber, filter_acc_x, filter_acc_x);
+	//array_mult(49, SamplesNumber, filter_acc_x, filter_acc_y);
+	//array_mult(49, SamplesNumber, filter_acc_x, filter_acc_z);
+		
 	printf("Preparing file 'data_fir.dat'.\n");
 	f = fopen("./data_fir.dat", "w");
 	if (f == NULL)
