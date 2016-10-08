@@ -187,9 +187,9 @@ int main(void)
 	fclose(f);
 	
 	printf("Filtering (FIR).\n");
-	fir_filter(55, coeff, SamplesNumber, acc_x, filter_acc_x);
-	fir_filter(55, coeff, SamplesNumber, acc_y, filter_acc_y);
-	fir_filter(55, coeff, SamplesNumber, acc_z, filter_acc_z);
+	fir_filter(49, coeff, SamplesNumber, acc_x, filter_acc_x);
+	fir_filter(49, coeff, SamplesNumber, acc_y, filter_acc_y);
+	fir_filter(49, coeff, SamplesNumber, acc_z, filter_acc_z);
 	
 	//array_mult(49, SamplesNumber, filter_acc_x, filter_acc_x);
 	//array_mult(49, SamplesNumber, filter_acc_x, filter_acc_y);
