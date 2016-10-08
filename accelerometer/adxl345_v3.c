@@ -6,7 +6,7 @@
 
 #define DevAddr  0x53  //device address
 #define TimeStep 10 // sample interval in ms
-#define MeasurePeriod 20 // in seconds
+#define MeasurePeriod 5 // in seconds
 #define SamplesNumber (1000*MeasurePeriod/TimeStep)
 
 void adxl345_init(int fd)
@@ -55,10 +55,10 @@ void adxl345_read_xyz(int fd, unsigned int data_length, float acc_x[], float acc
 		printf("\r%d s", (i*TimeStep)/1000);
 		fflush(stdout); 
 		wiringPiI2CReadBurst(fd, 0x32, 6, sample) ;
-		acc_x[i] = 16 * (float)((short int)((unsigned int)(sample[1] << 8) + (unsigned int)sample[0])) / (4096); // acc.x
-		acc_y[i] = 16 * (float)((short int)((unsigned int)(sample[3] << 8) + (unsigned int)sample[2])) / (4096); // acc.y
-		acc_z[i] = 16 * (float)((short int)((unsigned int)(sample[5] << 8) + (unsigned int)sample[4])) / (4096); // acc.z
-		delay(5);
+		acc_x[i] = 0.004 * ((float)((short int)((unsigned int)(sample[1] << 8) + (unsigned int)sample[0]))); // acc.x
+		acc_y[i] = 0.004 * ((float)((short int)((unsigned int)(sample[3] << 8) + (unsigned int)sample[2]))); // acc.y
+		acc_z[i] = 0.004 * ((float)((short int)((unsigned int)(sample[5] << 8) + (unsigned int)sample[4]))); // acc.z
+		delay(1);
 	}
 	printf(" -> ");
 	return;
@@ -95,7 +95,59 @@ int main(void)
 	
 	//float coeff[]= {0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091}; // length 11
 	
-	float coeff[]= {0, 0, 0}; // length 11
+	//float coeff[]= {0, 0, 0}; // length 3
+	
+	float coeff[]= {
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653,
+		0.0204081632653
+		}; // length 49
 	
 		
 /*float coeff[49] = {
@@ -181,9 +233,9 @@ int main(void)
 	fclose(f);
 	
 	printf("Filtering (FIR).\n");
-	fir_filter(3, coeff, SamplesNumber, acc_x, filter_acc_x);
-	fir_filter(3, coeff, SamplesNumber, acc_y, filter_acc_y);
-	fir_filter(3, coeff, SamplesNumber, acc_z, filter_acc_z);
+	fir_filter(49, coeff, SamplesNumber, acc_x, filter_acc_x);
+	fir_filter(49, coeff, SamplesNumber, acc_y, filter_acc_y);
+	fir_filter(49, coeff, SamplesNumber, acc_z, filter_acc_z);
 	
 	printf("Preparing file 'data_fir.dat'.\n");
 	f = fopen("./data_fir.dat", "w");
