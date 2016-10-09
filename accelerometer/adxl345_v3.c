@@ -64,7 +64,8 @@ void adxl345_read_xyz(int fd, unsigned int data_length, float acc_x[], float acc
 	return;
 }
 
-void array_mult(float k, unsigned int data_length, float x[], float y[]){
+void array_mult(float k, unsigned int data_length, float x[], float y[])
+{
 	int n;
 	for(n=0; n<data_length; n++){
 		y[n]= k * x[n];
@@ -93,6 +94,34 @@ void fir_filter(unsigned int coeff_length, float coeff[], unsigned int data_leng
 	return;
 	}
 
+void derivative(unsigned int data_length, float x[], float y[], float x_past){
+	int n;
+	
+	// discrete derivative (first sample)
+	y[0]= x[0] - x_past;
+	
+	// discrete derivative
+	for(n=1; n<data_length; n++){
+		y[n]= x[n] - x[n - 1];
+	}
+	
+	return;
+	}
+
+void integral(unsigned int data_length, float x[], float y[], float c0){
+	int n;
+	
+	y[0] = c0;
+
+	// discrete derivative
+	for(n=1; n<data_length; n++){
+		y[n]= y[n-1] + x[n];
+	}
+	
+	return;
+	}
+
+
 int main(void)
 {
 	int fd;
@@ -100,6 +129,14 @@ int main(void)
 	float acc_x[SamplesNumber];
 	float acc_y[SamplesNumber];
 	float acc_z[SamplesNumber];
+	
+	float test[] = {2, 3, 4, 5, 6, 5, 4, 3, 2};//9
+	float tmp[9];//9
+	float out[9];//9
+
+	//derivative(9, test, tmp, 0);
+	//integral(9, tmp, out, 0);
+	//for(t=0; t<9; t++){printf("%.4f  %.4f  %.4f\n", test[t], tmp[t], out[t]);}
 	
 	//float coeff[]= {0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091, 0.0909090909091}; // length 11
 	
@@ -160,6 +197,10 @@ int main(void)
 	float filter_acc_y[SamplesNumber];
 	float filter_acc_z[SamplesNumber];
 	
+	float der_acc_x[SamplesNumber];
+	float der_acc_y[SamplesNumber];
+	float der_acc_z[SamplesNumber];
+	
 	printf("Initializing I2C interface.\n");
 	fd = wiringPiI2CSetup(DevAddr);
 
@@ -186,15 +227,24 @@ int main(void)
 	}	
 	fclose(f);
 	
-	printf("Filtering (FIR).\n");
-	fir_filter(49, coeff, SamplesNumber, acc_x, filter_acc_x);
-	fir_filter(49, coeff, SamplesNumber, acc_y, filter_acc_y);
-	fir_filter(49, coeff, SamplesNumber, acc_z, filter_acc_z);
+	printf("Filtering (integral/derivative).\n");
+	//fir_filter(49, coeff, SamplesNumber, acc_x, filter_acc_x);
+	//fir_filter(49, coeff, SamplesNumber, acc_y, filter_acc_y);
+	//fir_filter(49, coeff, SamplesNumber, acc_z, filter_acc_z);
 	
 	//array_mult(49, SamplesNumber, filter_acc_x, filter_acc_x);
 	//array_mult(49, SamplesNumber, filter_acc_x, filter_acc_y);
 	//array_mult(49, SamplesNumber, filter_acc_x, filter_acc_z);
 		
+	derivative(SamplesNumber, acc_x, der_acc_x, 0);
+	derivative(SamplesNumber, acc_y, der_acc_y, 0);
+	derivative(SamplesNumber, acc_z, der_acc_z, 0);
+	
+	integral(SamplesNumber, der_acc_x, filter_acc_x, 0);
+	integral(SamplesNumber, der_acc_y, filter_acc_y, 0);
+	integral(SamplesNumber, der_acc_z, filter_acc_z, 0);
+	
+	
 	printf("Preparing file 'data_fir.dat'.\n");
 	f = fopen("./data_fir.dat", "w");
 	if (f == NULL)
